@@ -5,6 +5,7 @@ import config
 import stock_env
 from ray import tune
 from processor_alpaca import DataProcessor
+from workflow_actor import Training_Data
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
@@ -27,10 +28,10 @@ def train(
 ):  
     """ A scalable, reusable training function containing configurations for rllib """
 
-    cwd = kwargs.get("cwd", "./" + str(ticker[0]))
+    cwd = kwargs.get("cwd", "./" + str(ticker))
 
-    DP = DataProcessor(data_source)
-    data = DP.run(ticker, time_interval, start_date, end_date)
+    DP = Training_Data(data_source)
+    data = DP.run_workflow(ticker, time_interval, start_date, end_date)
 
     stock_data = {"training_data": data}  
 
@@ -112,8 +113,8 @@ def test(
     agent = ray.rllib.agents.ppo.PPOTrainer(config=agent_config, env=env_name)
     agent.restore(checkpoint_path)
 
-    DP = DataProcessor(data_source)
-    test_data = DP.run(ticker, start_date, end_date, time_interval)
+    DP = Training_Data(data_source)
+    test_data = DP.run_workflow(ticker, time_interval, start_date, end_date)
 
     stock_data = {"test_data": test_data}
 
@@ -147,9 +148,9 @@ def test(
     # plot rewards
     plt.clf()
     plt.plot(rewards, label = 'Agent', color = 'blue')
-    plt.title("PnL for {} on {}".format(ticker[0], end_date))
+    plt.title("PnL for {} on {}".format(ticker, end_date))
     plt.ylabel("Reward, %")
-    plt.savefig("{}_{}.png".format(ticker[0], end_date))
+    plt.savefig("{}_{}.png".format(ticker, end_date))
 
 
 class Agent(object):
@@ -157,7 +158,7 @@ class Agent(object):
         self.ticker = ticker
         self.data_source = data_source
         self.time_interval = time_interval
-        self.env_name = "{}_env".format(ticker[0])
+        self.env_name = "{}_env".format(ticker)
         self.train_start_date = train_start_date
         self.train_end_date = train_end_date
         self.test_end_date = test_end_date
@@ -192,11 +193,11 @@ if __name__ == '__main__':
 
     ray.shutdown()
     ray.init(num_cpus=4, num_gpus=0, ignore_reinit_error=True)
-    stock_universe = ['OXY', 'PLAY']
+    stock_universe = ['NVDA', 'MSFT']
 
     for i in range(len(stock_universe)):
         Agent(
-            ticker=[stock_universe[i]],
+            ticker=stock_universe[i],
             data_source='alpaca',
             train_start_date='2022-01-25',
             train_end_date='2022-03-29',
