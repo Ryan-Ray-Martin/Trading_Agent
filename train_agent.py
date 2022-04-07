@@ -61,7 +61,7 @@ def train(
     config_model["env"] = env_name
 
     config_model["lr"] = 0.003
-    config_model["seed"] = 1234
+    config_model["seed"] = 12345
     config_model["sgd_minibatch_size"]= 128
     #config_model["lambda"]= 0.7
     config_model["framework"] = "tf"
@@ -191,6 +191,8 @@ if __name__ == '__main__':
      individual agents on a given portfolio; thus, addressing the concern
      of diversification and capacity in leveraged trades """
 
+    """workflow will only run if dates are at least one day prior to current"""
+
     ray.shutdown()
     ray.init(num_cpus=4, num_gpus=0, ignore_reinit_error=True)
     stock_universe = ['NVDA', 'MSFT']
@@ -199,10 +201,10 @@ if __name__ == '__main__':
         Agent(
             ticker=stock_universe[i],
             data_source='alpaca',
-            train_start_date='2022-01-25',
-            train_end_date='2022-03-29',
-            test_start_date='2022-03-30',
-            test_end_date='2022-03-30',
+            train_start_date='2022-02-07',
+            train_end_date='2022-04-04',
+            test_start_date='2022-04-05',
+            test_end_date='2022-04-05',
             time_interval='1Min',
             API_KEY = config.API_KEY,
             API_SECRET = config.API_SECRET,

@@ -48,12 +48,8 @@ class Training_Data:
 
 if __name__ == "__main__":
     TD = Training_Data('alpaca')
-    data = TD.run_workflow(ticker="TSLA", time_interval="1Min", start_date="2021-06-08", end_date="2021-06-20")
+    data = TD.run_workflow(ticker="TSLA", time_interval="1Min", start_date="2022-02-07", end_date="2022-04-06")
     print(data)
-    #clean_data = training.transform.run(data)
-    #prices = training.load.run(clean_data)
-    #print(prices)
-
     
 
 

@@ -54,7 +54,8 @@ class DataProcessor:
 
 if __name__ == '__main__':
     alpaca = DataProcessor(config.API_KEY, config.API_SECRET, config.APCA_API_BASE_URL)
-    df = alpaca.download_bars(["AAPL"], "1Min", "2021-06-08", "2021-06-20")
-    prices = alpaca.clean_data(df)
-    prices_rel = alpaca.prices_to_relative(prices)
-    print(prices_rel)
+    df = alpaca.download_bars(["AAPL"], "1Min", "2022-02-08", "2022-04-05")
+    print(df)
+   # prices = alpaca.clean_data(df)
+   # prices_rel = alpaca.prices_to_relative(prices)
+   # print(prices_rel)"""
