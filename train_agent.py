@@ -1,20 +1,25 @@
 import os
+
+import matplotlib as mpl
 import pandas as pd
 import ray
+from ray import tune
+
 import config
 import stock_env
-from ray import tune
 from processor_alpaca import DataProcessor
 from workflow_actor import Training_Data
-import matplotlib as mpl
+
 mpl.use("Agg")
-import matplotlib.pyplot as plt
-from ray.rllib.models import ModelCatalog
-from fc_net import TorchCustomModel
-from create_env import env_creator
-from ray.rllib.agents.callbacks import MultiCallbacks, RE3UpdateCallbacks
 from functools import partial
+
+import matplotlib.pyplot as plt
 from ray.rllib.agents import ppo
+from ray.rllib.agents.callbacks import MultiCallbacks, RE3UpdateCallbacks
+from ray.rllib.models import ModelCatalog
+
+from create_env import env_creator
+from fc_net import TorchCustomModel
 
 
 def train(
@@ -195,16 +200,16 @@ if __name__ == '__main__':
 
     ray.shutdown()
     ray.init(num_cpus=4, num_gpus=0, ignore_reinit_error=True)
-    stock_universe = ['NVDA', 'MSFT']
+    stock_universe = ['AAP', 'ORLY', 'AMPH','COP']
 
     for i in range(len(stock_universe)):
         Agent(
             ticker=stock_universe[i],
             data_source='alpaca',
-            train_start_date='2022-02-07',
-            train_end_date='2022-04-04',
-            test_start_date='2022-04-05',
-            test_end_date='2022-04-05',
+            train_start_date='2022-02-11',
+            train_end_date='2022-04-07',
+            test_start_date='2022-04-08',
+            test_end_date='2022-04-08',
             time_interval='1Min',
             API_KEY = config.API_KEY,
             API_SECRET = config.API_SECRET,
