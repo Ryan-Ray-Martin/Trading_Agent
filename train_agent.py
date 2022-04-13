@@ -15,7 +15,9 @@ from ray.rllib.agents.callbacks import MultiCallbacks, RE3UpdateCallbacks
 from ray.rllib.models import ModelCatalog
 
 from create_env import env_creator
-from fc_net import TorchCustomModel
+from fc_net import CustomModel
+
+import numpy as np
 
 
 def train(
@@ -45,19 +47,24 @@ def train(
         reset_on_close=True))
 
     # register the custom model
-    ModelCatalog.register_custom_model("fc_net", TorchCustomModel)
+    ModelCatalog.register_custom_model("fc_net", CustomModel)
+
 
     config_model = ppo.DEFAULT_CONFIG.copy()
+    config_model["model"]["use_lstm"] = True
+    config_model["model"]["lstm_cell_size"] = 256
+    config_model["model"]["lstm_use_prev_action"] = True
+    config_model["model"]["lstm_use_prev_reward"] = True
     # Add a new RE3UpdateCallbacks
-    config_model["callbacks"] = MultiCallbacks([
+    """config_model["callbacks"] = MultiCallbacks([
     config_model["callbacks"],
         partial(
             RE3UpdateCallbacks,
             embeds_dim=128,
             beta_schedule="linear decay",
-            k_nn=60,
+            k_nn=30,
             ),
-        ])
+        ])"""
 
     config_model["env"] = env_name
 
@@ -134,24 +141,50 @@ def test(
     total_steps = 0
     rewards = []
 
+    lstm_cell_size = 256
+    init_state = state = [np.zeros([lstm_cell_size], np.float32) for _ in range(2)]
+
+    init_prev_a = prev_a = 0
+    init_prev_r = prev_r = 0.0
+
     obs = env.reset()
     while True:
-        action = agent.compute_action(obs)
-        obs, reward, done, _ = env.step(action)
+        a, state_out, _ = agent.compute_single_action(
+            observation=obs,
+            state=state,
+            prev_action=prev_a,
+            prev_reward=prev_r,
+            explore=False,
+            policy_id="default_policy",  # <- default value
+        )
+        # Send the computed action `a` to the env.
+        obs, reward, done, _ = env.step(a)
+        # Is the episode `done`? -> Reset.
         print("done", done)
         episode_reward += reward
         total_steps += 1
         rewards.append(episode_reward)
-        print("{}: reward={} action={}".format(total_steps, episode_reward, action))
+        print("{}: reward={} action={}".format(total_steps, episode_reward, a))
         if done:
-            break
+            obs = env.reset()
+            state = init_state
+            prev_a = init_prev_a
+            prev_r = init_prev_r
 
-    # plot rewards
-    plt.clf()
-    plt.plot(rewards, label = 'Agent', color = 'blue')
-    plt.title("PnL for {} on {}".format(ticker, end_date))
-    plt.ylabel("Reward, %")
-    plt.savefig("{}_{}.png".format(ticker, end_date))
+            plt.clf()
+            plt.plot(rewards, label = 'Agent', color = 'blue')
+            plt.title("PnL for {} on {}".format(ticker, end_date))
+            plt.ylabel("Reward, %")
+            plt.savefig("{}_{}.png".format(ticker, end_date))
+        # Episode is still ongoing -> Continue.
+        else:
+            state = state_out
+            if init_prev_a is not None:
+                prev_a = a
+            if init_prev_r is not None:
+                prev_r = reward
+    
+    
 
 
 class Agent(object):
