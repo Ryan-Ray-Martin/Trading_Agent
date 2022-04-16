@@ -1,6 +1,9 @@
 import matplotlib as mpl
 import ray
 from ray import tune
+from ray.tune.suggest import ConcurrencyLimiter
+from ray.tune.schedulers import AsyncHyperBandScheduler
+from ray.tune.suggest.optuna import OptunaSearch
 
 import config
 import stock_env
@@ -10,7 +13,7 @@ mpl.use("Agg")
 from functools import partial
 
 import matplotlib.pyplot as plt
-from ray.rllib.agents import ppo
+from ray.rllib.agents import ppo, sac
 from ray.rllib.agents.callbacks import MultiCallbacks, RE3UpdateCallbacks
 from ray.rllib.models import ModelCatalog
 
@@ -50,7 +53,7 @@ def train(
     config_model = ppo.DEFAULT_CONFIG.copy()
     # Add a new RE3UpdateCallbacks
     config_model["model"]["custom_model"] = "fc_net"
-    config_model["model"]["vf_share_layers"] = False
+    #config_model["model"]["vf_share_layers"] = False
     config_model["callbacks"] = MultiCallbacks([
     config_model["callbacks"],
         partial(
@@ -62,12 +65,13 @@ def train(
         ])
 
     config_model["env"] = env_name
-
-    config_model["lr"] = 0.003
+    config_model["entropy_coeff"] = tune.loguniform(0.00000001, 0.1)
+    config_model["lr"] = tune.loguniform(5e-5, 1)
+    config_model["sgd_minibatch_size"] = tune.choice([ 32, 64, 128, 256, 512])
+    config_model["lambda"] = tune.choice([0.1,0.3,0.5,0.7,0.9,1.0])
     config_model["seed"] = 12345
-    config_model["sgd_minibatch_size"]= 512
-    #config_model["lambda"]= 0.7
     config_model["framework"] = "tf"
+    config_model["observation_filter"] = "MeanStdFilter"
     # Add type as RE3 in the exploration_config parameter
     config_model["exploration_config"] = {
             "type": "RE3",
@@ -85,6 +89,11 @@ def train(
     analysis = ray.tune.run(
         ray.rllib.agents.ppo.PPOTrainer,
         config=config_model,
+        search_alg=ConcurrencyLimiter(OptunaSearch(), max_concurrent=4),
+        scheduler=AsyncHyperBandScheduler(),
+        metric="episode_reward_mean",
+        mode="max",
+        num_samples=10,
         local_dir=cwd,
         stop=stop,
         checkpoint_at_end = True)
