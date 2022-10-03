@@ -1,7 +1,6 @@
 from collections import namedtuple
 
 import pandas as pd
-from ray import workflow
 
 import config
 from processor_alpaca import DataProcessor
@@ -22,37 +21,26 @@ class Training_Data:
         else:
             raise ValueError('Data source input is NOT supported yet.')
     
-    @workflow.step
-    def extract_data(processor, ticker, time_interval, start_date, end_date) -> pd.DataFrame:
-        df = processor.download_bars([ticker], time_interval, start_date, end_date)
+    def extract_data(self, ticker, time_interval, start_date, end_date) -> pd.DataFrame:
+        df = self.processor.download_bars([ticker], time_interval, start_date, end_date)
         return df
 
-    @workflow.step
-    def transform_data(processor, df: pd.DataFrame) -> namedtuple:
-        df = processor.clean_data(df)
+    def transform_data(self, df: pd.DataFrame) -> namedtuple:
+        df = self.processor.clean_data(df)
         return df
 
-    @workflow.step
-    def load_data(processor, prices: namedtuple) -> namedtuple:
-        df = processor.prices_to_relative(prices)
+    def load_data(self, prices: namedtuple) -> namedtuple:
+        df = self.processor.prices_to_relative(prices)
         return df
     
     def run_workflow(self, ticker, time_interval, start_date, end_date):
-        workflow.init()
-        data = self.extract_data.step(self.processor, ticker, time_interval, start_date, end_date)
-        data = self.transform_data.step(self.processor, data)
-        data = self.load_data.step(self.processor, data)
-        prices = data.run()
-        return prices
+        data = self.extract_data(ticker, time_interval, start_date, end_date)
+        data = self.transform_data(data)
+        data = self.load_data(data)
+        return data
 
 
 if __name__ == "__main__":
     TD = Training_Data('alpaca')
     data = TD.run_workflow(ticker="TSLA", time_interval="1Day", start_date="2022-02-07", end_date="2022-09-20")
     print(data)
-    
-
-
-
-
-

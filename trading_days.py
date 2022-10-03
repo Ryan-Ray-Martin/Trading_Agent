@@ -1,4 +1,3 @@
-import datetime
 from datetime import date, timedelta
 
 import pandas_market_calendars as mcal
@@ -17,7 +16,7 @@ def trading_days(date_range):
     start_date = str(start_date)
     return start_date, end_date
 
-print(trading_days(10))
+print(trading_days(42))
 
 
 

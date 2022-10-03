@@ -4,13 +4,9 @@ from gym.utils import seeding
 from gym.envs.registration import EnvSpec
 import enum
 import numpy as np
-import logging
-from ray.rllib.env import MultiAgentEnv
-
-logger = logging.getLogger(__name__)
 
 DEFAULT_BARS_COUNT = 10
-DEFAULT_COMMISSION_PERC = 0.0
+DEFAULT_COMMISSION_PERC = 0.1
 
 
 class Actions(enum.Enum):
@@ -48,7 +44,7 @@ class State:
         if self.volumes:
             return 4 * self.bars_count + 1 + 1,
         else:
-            return 3 * self.bars_count + 1 + 1,
+            return 3*self.bars_count + 1 + 1,
 
     def encode(self):
         """
@@ -179,8 +175,8 @@ class StocksEnv(gym.Env):
         prices = self._prices[self._instrument]
         bars = self._state.bars_count
         if self.random_ofs_on_reset:
-            offset = self.np_random.choice(abs(
-                prices.high.shape[0]-bars*10)) + bars
+            offset = self.np_random.choice(
+                prices.high.shape[0]-bars*10) + bars
         else:
             offset = bars
         self._state.reset(prices, offset)
@@ -206,77 +202,3 @@ class StocksEnv(gym.Env):
         self.np_random, seed1 = seeding.np_random(seed)
         seed2 = seeding.hash_seed(seed1 + 1) % 2 ** 31
         return [seed1, seed2]
-"""
-    @classmethod
-    def from_dir(cls, data_dir, **kwargs):
-        prices = {
-            file: data.load_relative(file)
-            for file in data.price_files(data_dir)
-        }
-        return StocksEnv(prices, **kwargs)
-"""
-
-class HierarchicalStockEnv(MultiAgentEnv):
-    def __init__(self, env_config):
-        self.flat_env = StocksEnv(env_config)
-
-    def reset(self):
-        self.cur_obs = self.flat_env.reset()
-        self.current_goal = None
-        self.steps_remaining_at_level = None
-        self.num_high_level_steps = 0
-        # current low level agent id. This must be unique for each high level
-        # step since agent ids cannot be reused.
-        self.low_level_agent_id = "low_level_{}".format(
-            self.num_high_level_steps)
-        return {
-            "high_level_agent": self.cur_obs,
-        }
-
-    def step(self, action_dict):
-        assert len(action_dict) == 1, action_dict
-        if "high_level_agent" in action_dict:
-            return self._high_level_step(action_dict["high_level_agent"])
-        else:
-            return self._low_level_step(list(action_dict.values())[0])
-
-    def _high_level_step(self, action):
-        logger.debug("High level agent sets goal")
-        self.current_goal = action
-        self.steps_remaining_at_level = 25
-        self.num_high_level_steps += 1
-        self.low_level_agent_id = "low_level_{}".format(
-            self.num_high_level_steps)
-        obs = {self.low_level_agent_id: [self.cur_obs, self.current_goal]}
-        rew = {self.low_level_agent_id: 0}
-        done = {"__all__": False}
-        return obs, rew, done, {}
-
-    def _low_level_step(self, action):
-        logger.debug("Low level agent step {}".format(action))
-        self.steps_remaining_at_level -= 1
-        #cur_pos = tuple(self.cur_obs[0])
-        #goal_pos = self.flat_env._get_new_pos(cur_pos, self.current_goal)
-
-        # Step in the actual env
-        f_obs, f_rew, f_done, _ = self.flat_env.step(action)
-        #new_pos = tuple(f_obs[0])
-        self.cur_obs = f_obs
-
-        # Calculate low-level agent observation and reward
-        obs = {self.low_level_agent_id: [f_obs, self.current_goal]}
-        rew = {self.low_level_agent_id: f_rew}
-
-        # Handle env termination & transitions back to higher level
-        done = {"__all__": False}
-        if f_done:
-            done["__all__"] = True
-            logger.debug("high level final reward {}".format(f_rew))
-            rew["high_level_agent"] = f_rew
-            obs["high_level_agent"] = f_obs
-        elif self.steps_remaining_at_level == 0:
-            done[self.low_level_agent_id] = True
-            rew["high_level_agent"] = 0
-            obs["high_level_agent"] = f_obs
-
-        return obs, rew, done, {}

@@ -49,8 +49,7 @@ def train(
     env = env_creator("StocksEnv-v0")
     tune.register_env(env_name, lambda _: env(
         stock_data,
-        bars_count=30,
-        state_1d=False,
+        bars_count=4,
         reset_on_close=True))
 
     config_model = {
@@ -137,10 +136,9 @@ def test(
 
     env = stock_env.StocksEnv(
         stock_data,
-        bars_count=30,
+        bars_count=4,
         reset_on_close=False,
         commission=0.0,
-        state_1d=False,
         random_ofs_on_reset=False,
         reward_on_close=False,
         volumes=False

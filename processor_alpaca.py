@@ -19,6 +19,7 @@ class DataProcessor:
     def download_bars(self, ticker, time_interval, start_date, end_date) -> pd.DataFrame:
         """A method that fetches the OHLC data from the alpaca API"""
         df = self.api.get_bars(ticker, time_interval, start_date, end_date, adjustment='raw').df
+        df['volume'] = np.log10(df["volume"])
         return df
 
     def clean_data(self, df) -> namedtuple:
