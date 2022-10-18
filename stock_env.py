@@ -10,9 +10,8 @@ DEFAULT_COMMISSION_PERC = 0.1
 
 
 class Actions(enum.Enum):
-    Skip = 0
-    Buy = 1
-    Close = 2
+    Buy = 0
+    Close = 1
 
 
 class State:
@@ -98,7 +97,7 @@ class State:
             reward -= self.commission_perc
             done |= self.reset_on_close
             if self.reward_on_close:
-                reward += 100.0 * (close / self.open_price - 1.0)
+                reward += 100.0 * (close/self.open_price - 1.0)
             self.have_position = False
             self.open_price = 0.0
 
@@ -108,7 +107,7 @@ class State:
         done |= self._offset >= self._prices.close.shape[0]-1
 
         if self.have_position and not self.reward_on_close:
-            reward += 100.0 * (close / prev_close - 1.0)
+            reward += 100.0 * (close/prev_close - 1.0)
 
         return reward, done
 
